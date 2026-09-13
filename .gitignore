@@ -1,26 +1,85 @@
-# Compiled / build output
+# ------------------------------------------------------------------
+#  ECOMMERCE PLATFORM — ROOT GITIGNORE
+#  Focus: never commit secrets/config, build output, IDE or OS junk.
+# ------------------------------------------------------------------
+
+# ---------- Secrets & environment (SAFETY FIRST) ----------
+# Never commit real credentials. Use *.example templates instead.
+.env
+.env.*
+!.env.example
+*.local
+config/
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.jks
+*.crt
+
+# Spring / app config that may hold secrets (keep committed *.yml/properties,
+# but ignore per-developer or local-only overrides)
+application-local.*
+application-dev.*
+bootstrap-local.*
+
+# ---------- Build output ----------
 target/
+build/
+out/
 *.class
 *.jar
 *.war
+*.ear
+*.nar
 
-# IDE
+# ---------- IDE ----------
 .idea/
 *.iml
+*.ipr
+*.iws
 .vscode/
 *.swp
 *.swo
+.classpath
+.project
+.settings/
+.factorypath
+*.springBeans
+*.sts4-cache
 
-# OS
+# ---------- OS / editors ----------
 .DS_Store
 Thumbs.db
+Desktop.ini
+*~
+*.orig
+*.rej
 
-# Node / frontend
+# ---------- Node / frontend ----------
 frontend/node_modules/
 frontend/dist/
 frontend/.next/
 frontend/.nuxt/
+frontend/build/
+frontend/coverage/
+frontend/.env.local
 
-# Logs
+# ---------- Logs / temp ----------
 *.log
 logs/
+*.tmp
+*.cache
+tmp/
+
+# ---------- Tools / test reports ----------
+coverage/
+htmlcov/
+.gradle/
+
+# ---------- Docker local overrides ----------
+*.override.yml
+
+# ---------- Maven wrapper binary (keep the wrapper scripts, not the jar) ----------
+**/.mvn/wrapper/maven-wrapper.jar
