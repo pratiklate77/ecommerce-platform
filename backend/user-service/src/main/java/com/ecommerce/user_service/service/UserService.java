@@ -1,8 +1,11 @@
 package com.ecommerce.user_service.service;
 
 import com.ecommerce.user_service.dto.AuthResponse;
+import com.ecommerce.user_service.dto.ChangePasswordRequest;
 import com.ecommerce.user_service.dto.LoginRequest;
 import com.ecommerce.user_service.dto.RegisterRequest;
+import com.ecommerce.user_service.dto.UpdateEmailRequest;
+import com.ecommerce.user_service.dto.UpdateProfileRequest;
 import com.ecommerce.user_service.dto.UserResponse;
 import com.ecommerce.user_service.exception.ConflictException;
 import com.ecommerce.user_service.exception.ResourceNotFoundException;
@@ -63,6 +66,48 @@ public class UserService {
         }
 
         return issueToken(user);
+    }
+
+    @Transactional
+    public UserResponse updateProfile(String email, UpdateProfileRequest request) {
+        User user = findByEmailOrThrow(email.toLowerCase());
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
+        user.setPhone(request.phone());
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse updateEmail(String email, UpdateEmailRequest request) {
+        User user = findByEmailOrThrow(email.toLowerCase());
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new UnauthorizedException("Current password is incorrect");
+        }
+
+        String newEmail = request.newEmail().toLowerCase();
+        if (!newEmail.equals(user.getEmail())) {
+            if (userRepository.existsByEmail(newEmail)) {
+                throw new ConflictException("An account with email " + newEmail + " already exists");
+            }
+            user.setEmail(newEmail);
+        }
+
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = findByEmailOrThrow(email.toLowerCase());
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new UnauthorizedException("Current password is incorrect");
+        }
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new ConflictException("New password must be different from the current password");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
     }
 
     @Transactional(readOnly = true)

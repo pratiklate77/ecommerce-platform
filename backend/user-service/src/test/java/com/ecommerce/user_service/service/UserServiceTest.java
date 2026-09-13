@@ -1,8 +1,11 @@
 package com.ecommerce.user_service.service;
 
 import com.ecommerce.user_service.dto.AuthResponse;
+import com.ecommerce.user_service.dto.ChangePasswordRequest;
 import com.ecommerce.user_service.dto.LoginRequest;
 import com.ecommerce.user_service.dto.RegisterRequest;
+import com.ecommerce.user_service.dto.UpdateEmailRequest;
+import com.ecommerce.user_service.dto.UpdateProfileRequest;
 import com.ecommerce.user_service.exception.ConflictException;
 import com.ecommerce.user_service.exception.UnauthorizedException;
 import com.ecommerce.user_service.model.Role;
@@ -130,5 +133,113 @@ class UserServiceTest {
 
         assertThrows(UnauthorizedException.class, () -> userService.login(
                 new LoginRequest("nobody@example.com", "whatever")));
+    }
+
+    @Test
+    void updateProfileSetsNameAndPhone() {
+        User user = User.builder()
+                .id(1L)
+                .email("alice@example.com")
+                .password("encoded-password")
+                .firstName("Old")
+                .role(Role.CUSTOMER)
+                .enabled(true)
+                .build();
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+
+        var response = userService.updateProfile("alice@example.com",
+                new UpdateProfileRequest("Alice", "Smith", "555-9999"));
+
+        assertEquals("Alice", response.firstName());
+        assertEquals("Smith", response.lastName());
+        assertEquals("555-9999", response.phone());
+    }
+
+    @Test
+    void updateEmailRequiresCorrectPasswordAndChangesEmail() {
+        User user = User.builder()
+                .id(1L)
+                .email("alice@example.com")
+                .password("encoded-password")
+                .role(Role.CUSTOMER)
+                .enabled(true)
+                .build();
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("current-password", "encoded-password")).thenReturn(true);
+        when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+
+        var response = userService.updateEmail("alice@example.com",
+                new UpdateEmailRequest("New@Example.com", "current-password"));
+
+        assertEquals("new@example.com", response.email());
+    }
+
+    @Test
+    void updateEmailRejectsWrongPassword() {
+        User user = User.builder()
+                .id(1L)
+                .email("alice@example.com")
+                .password("encoded-password")
+                .role(Role.CUSTOMER)
+                .enabled(true)
+                .build();
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
+
+        assertThrows(UnauthorizedException.class, () -> userService.updateEmail(
+                "alice@example.com", new UpdateEmailRequest("new@example.com", "wrong-password")));
+    }
+
+    @Test
+    void updateEmailRejectsTakenEmail() {
+        User user = User.builder()
+                .id(1L)
+                .email("alice@example.com")
+                .password("encoded-password")
+                .role(Role.CUSTOMER)
+                .enabled(true)
+                .build();
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("current-password", "encoded-password")).thenReturn(true);
+        when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
+
+        assertThrows(ConflictException.class, () -> userService.updateEmail(
+                "alice@example.com", new UpdateEmailRequest("taken@example.com", "current-password")));
+    }
+
+    @Test
+    void changePasswordEncodesNewPassword() {
+        User user = User.builder()
+                .id(1L)
+                .email("alice@example.com")
+                .password("encoded-password")
+                .role(Role.CUSTOMER)
+                .enabled(true)
+                .build();
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("current-password", "encoded-password")).thenReturn(true);
+        when(passwordEncoder.matches("new-password-123", "encoded-password")).thenReturn(false);
+        when(passwordEncoder.encode("new-password-123")).thenReturn("new-encoded-password");
+
+        userService.changePassword("alice@example.com",
+                new ChangePasswordRequest("current-password", "new-password-123"));
+
+        assertEquals("new-encoded-password", user.getPassword());
+    }
+
+    @Test
+    void changePasswordRejectsWrongCurrentPassword() {
+        User user = User.builder()
+                .id(1L)
+                .email("alice@example.com")
+                .password("encoded-password")
+                .role(Role.CUSTOMER)
+                .enabled(true)
+                .build();
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
+
+        assertThrows(UnauthorizedException.class, () -> userService.changePassword(
+                "alice@example.com", new ChangePasswordRequest("wrong-password", "new-password-123")));
     }
 }
