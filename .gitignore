@@ -1,0 +1,26 @@
+# Compiled / build output
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+frontend/.nuxt/
+
+# Logs
+*.log
+logs/
