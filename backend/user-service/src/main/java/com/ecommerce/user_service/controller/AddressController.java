@@ -40,6 +40,7 @@ public class AddressController {
 
     @GetMapping
     public List<AddressResponse> list(@AuthenticationPrincipal UserDetails principal) {
+        System.out.println("The user info is " + principal);
         return addressService.list(principal.getUsername());
     }
 
