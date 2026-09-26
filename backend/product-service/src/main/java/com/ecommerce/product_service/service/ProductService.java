@@ -96,3 +96,4 @@ public class ProductService {
         return sku.trim().toUpperCase();
     }
 }
+
