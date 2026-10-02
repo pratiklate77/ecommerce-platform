@@ -5,7 +5,6 @@ import com.ecommerce.order_service.dto.OrderCreateRequest;
 import com.ecommerce.order_service.dto.OrderItemRequest;
 import com.ecommerce.order_service.dto.OrderResponse;
 import com.ecommerce.order_service.dto.OrderStatusUpdateRequest;
-import com.ecommerce.order_service.event.OrderEventPublisher;
 import com.ecommerce.order_service.exception.ConflictException;
 import com.ecommerce.order_service.exception.ResourceNotFoundException;
 import com.ecommerce.order_service.model.Order;
@@ -23,8 +22,8 @@ import java.util.List;
 
 /**
  * Orchestrates the order lifecycle: creation, customer-scoped reads, status
- * transitions and cancellation. Prices are computed server-side and broker
- * events are published only after the change is committed.
+ * transitions and cancellation. Prices are computed server-side before the
+ * order is persisted.
  */
 @Slf4j
 @Service
@@ -34,7 +33,6 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderNumberGenerator orderNumberGenerator;
     private final OrderPriceCalculator priceCalculator;
-    private final OrderEventPublisher eventPublisher;
 
     @Transactional
     public OrderResponse create(Long customerId, String customerEmail, OrderCreateRequest request) {
@@ -58,7 +56,6 @@ public class OrderService {
         request.items().forEach(item -> order.addItem(toOrderItem(item)));
 
         Order saved = orderRepository.save(order);
-        eventPublisher.orderCreated(saved);
         log.info("Placed order {} for customer {}", saved.getOrderNumber(), customerId);
 
         return OrderResponse.from(saved);
@@ -97,7 +94,6 @@ public class OrderService {
 
         order.setStatus(target);
         order.setCancelReason(request.reason());
-        eventPublisher.statusChanged(order, current.name(), target.name(), request.reason());
         return OrderResponse.from(order);
     }
 
@@ -110,17 +106,15 @@ public class OrderService {
                     + " cannot be cancelled in state " + order.getStatus());
         }
 
-        OrderStatus previous = order.getStatus();
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(request.reason());
-        eventPublisher.orderCancelled(order, previous, request.reason());
         log.info("Cancelled order {} for customer {}", order.getOrderNumber(), customerId);
         return OrderResponse.from(order);
     }
 
     /**
-     * Driven by the {@code order.paid} event consumed from payment-service.
-     * Idempotent: already-confirmed orders are left untouched.
+     * Confirms a pending order once its payment has been verified by
+     * payment-service. Idempotent: already-confirmed orders are left untouched.
      */
     @Transactional
     public void markPaid(Long id, String paymentId) {
@@ -137,7 +131,6 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.CONFIRMED);
-        eventPublisher.statusChanged(order, current.name(), OrderStatus.CONFIRMED.name(), "paymentId=" + paymentId);
         log.info("Order {} confirmed after payment {}", order.getOrderNumber(), paymentId);
     }
 

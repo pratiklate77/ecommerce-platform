@@ -9,7 +9,7 @@
 .env.*
 !.env.example
 *.local
-config/
+/config/
 secrets/
 credentials/
 *.pem

@@ -4,6 +4,7 @@ import com.ecommerce.user_service.dto.AuthResponse;
 import com.ecommerce.user_service.dto.ChangePasswordRequest;
 import com.ecommerce.user_service.dto.LoginRequest;
 import com.ecommerce.user_service.dto.RegisterRequest;
+import com.ecommerce.user_service.dto.RegisterResposeDto;
 import com.ecommerce.user_service.dto.UpdateEmailRequest;
 import com.ecommerce.user_service.dto.UpdateProfileRequest;
 import com.ecommerce.user_service.exception.ConflictException;
@@ -57,7 +58,7 @@ class UserServiceTest {
     }
 
     @Test
-    void registerCreatesUserEncodesPasswordAndReturnsToken() {
+    void registerCreatesUserEncodesPasswordAndReturnsRegistrationReceipt() {
         when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("encoded-password");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -66,16 +67,11 @@ class UserServiceTest {
             return saved;
         });
 
-        UserDetails userDetails = userDetailsFor("alice@example.com");
-        when(userDetailsService.loadUserByUsername("alice@example.com")).thenReturn(userDetails);
-        when(jwtService.generateToken(userDetails)).thenReturn("jwt-token");
-
-        AuthResponse response = userService.register(
+        RegisterResposeDto response = userService.register(
                 new RegisterRequest("Alice@Example.com", "password123", "Alice", "Smith", "555-1234"));
 
-        assertEquals("alice@example.com", response.user().email());
-        assertEquals("jwt-token", response.token());
-        assertEquals(Role.CUSTOMER, response.user().role());
+        assertEquals("alice@example.com", response.email());
+        assertEquals(1L, response.userId());
         verify(userRepository).save(argThat(user -> user.getPassword().equals("encoded-password")));
     }
 

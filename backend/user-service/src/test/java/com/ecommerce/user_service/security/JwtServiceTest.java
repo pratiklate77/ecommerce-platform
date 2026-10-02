@@ -37,6 +37,21 @@ class JwtServiceTest {
     }
 
     @Test
+    void generatedTokenCarriesTheUserIdentityClaim() {
+        String token = jwtService.generateToken(user("alice@example.com"), 42L);
+
+        assertThat(jwtService.extractUserId(token)).isEqualTo(42L);
+    }
+
+    @Test
+    void tokenWithoutUserIdentityClaimYieldsNullUserId() {
+        String token = jwtService.generateToken(user("alice@example.com"));
+
+        
+        assertThat(jwtService.extractUserId(token)).isNull();
+    }
+
+    @Test
     void expiredTokenIsRejected() {
         JwtService alreadyExpired = new JwtService(SECRET, -1_000L);
         String token = alreadyExpired.generateToken(user("alice@example.com"));

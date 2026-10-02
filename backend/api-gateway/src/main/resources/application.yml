@@ -1,0 +1,49 @@
+server:
+  port: 8080
+
+app:
+  jwt:
+    # Must match user-service's signing secret. Override in the environment.
+    secret: ${APP_JWT_SECRET:change-me-to-a-32-byte-min-secret-key-for-hs256!!-dev-only}
+
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - http://localhost:8088
+              - http://localhost:5173
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: '*'
+            allowCredentials: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      routes:
+        - id: user-service
+          uri: http://${USER_SERVICE_HOST:localhost}:8081
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/users/**
+        - id: product-service
+          uri: http://${PRODUCT_SERVICE_HOST:localhost}:8082
+          predicates:
+            - Path=/api/v1/products/**
+        - id: inventory-service
+          uri: http://${INVENTORY_SERVICE_HOST:localhost}:8083
+          predicates:
+            - Path=/api/v1/inventory/**
+        - id: order-service
+          uri: http://${ORDER_SERVICE_HOST:localhost}:8084
+          predicates:
+            - Path=/api/v1/orders/**
+        - id: payment-service
+          uri: http://${PAYMENT_SERVICE_HOST:localhost}:8085
+          predicates:
+            - Path=/api/v1/payments/**

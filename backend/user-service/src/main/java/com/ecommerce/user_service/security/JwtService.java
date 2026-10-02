@@ -36,19 +36,39 @@ public class JwtService {
     }
 
     /**
+     * Claim key holding the user's numeric id. Downstream services (and the API
+     * Gateway, which forwards it as the {@code X-User-Id} header) need this to
+     * scope resources without an extra lookup.
+     */
+    public static final String USER_ID_CLAIM = "uid";
+
+    /**
      * Builds a signed JWT for the given user, embedding the subject (username/email)
      * and the granted authorities as a claim.
      */
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, null);
+    }
+
+    /**
+     * Builds a signed JWT for the given user, also embedding the user's numeric id
+     * under {@link #USER_ID_CLAIM} so downstream can resolve resource ownership.
+     */
+    public String generateToken(UserDetails userDetails, Long userId) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
         List<String> authorities = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
-        return Jwts.builder()
+        var jwtsBuilder = Jwts.builder()
                 .subject(userDetails.getUsername())
-                .claim("authorities", authorities)
+                .claim("authorities", authorities);
+        if (userId != null) {
+            jwtsBuilder.claim(USER_ID_CLAIM, userId);
+        }
+
+        return jwtsBuilder
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(getSigningKey())
@@ -70,6 +90,19 @@ public class JwtService {
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    /**
+     * Extracts the user id claim, or {@code null} when the token predates the
+     * {@code uid} claim (e.g. legacy or externally-issued tokens).
+     */
+    public Long extractUserId(String token) {
+        try {
+            Integer raw = extractClaim(token, claims -> claims.get(USER_ID_CLAIM, Integer.class));
+            return raw == null ? null : raw.longValue();
+        } catch (JwtException | IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     private boolean isTokenExpired(String token) {

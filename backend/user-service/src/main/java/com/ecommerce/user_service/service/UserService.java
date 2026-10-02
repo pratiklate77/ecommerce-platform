@@ -2,8 +2,10 @@ package com.ecommerce.user_service.service;
 
 import com.ecommerce.user_service.dto.AuthResponse;
 import com.ecommerce.user_service.dto.ChangePasswordRequest;
+import com.ecommerce.user_service.dto.GetUser;
 import com.ecommerce.user_service.dto.LoginRequest;
 import com.ecommerce.user_service.dto.RegisterRequest;
+import com.ecommerce.user_service.dto.RegisterResposeDto;
 import com.ecommerce.user_service.dto.UpdateEmailRequest;
 import com.ecommerce.user_service.dto.UpdateProfileRequest;
 import com.ecommerce.user_service.dto.UserResponse;
@@ -16,10 +18,13 @@ import com.ecommerce.user_service.repository.UserRepository;
 import com.ecommerce.user_service.security.CustomUserDetailsService;
 import com.ecommerce.user_service.security.JwtService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.boot.webmvc.autoconfigure.WebMvcProperties.Apiversion.Use;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -33,12 +38,13 @@ public class UserService {
     private final CustomUserDetailsService userDetailsService;
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public RegisterResposeDto  register(RegisterRequest request) {
         String email = request.email().toLowerCase();
 
         if (userRepository.existsByEmail(email)) {
             throw new ConflictException("An account with email " + email + " already exists");
         }
+        System.out.println(request.toString());
 
         User user = User.builder()
                 .email(email)
@@ -51,7 +57,15 @@ public class UserService {
                 .build();
 
         User saved = userRepository.save(user);
-        return issueToken(saved);
+        //RegisterResposeDto registerResposeDto = new RegisterResposeDto();
+
+        return new RegisterResposeDto(
+            "User Registered Successfully !! ",
+            saved.getId(),
+            saved.getEmail()
+        );
+
+        //return issueToken(saved);
     }
 
     @Transactional(readOnly = true)
@@ -129,7 +143,23 @@ public class UserService {
 
     private AuthResponse issueToken(User user) {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
-        String token = jwtService.generateToken(userDetails);
+        String token = jwtService.generateToken(userDetails, user.getId());
         return new AuthResponse(token, "Bearer", jwtService.getExpirationMs(), UserResponse.from(user));
+    }
+
+    @Transactional 
+    public GetUser findById(int id ){
+        User user =  userRepository.findById(id);
+        return new GetUser(
+            "User is fetched",
+            user.getId().toString(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName()
+         );
+
+        
+
+
     }
 }

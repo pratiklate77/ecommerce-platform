@@ -1,0 +1,11 @@
+# Keep the build context small and the Maven layer cache stable.
+target/
+.mvn/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+*.log
+Dockerfile
+.dockerignore
